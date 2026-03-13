@@ -1,5 +1,4 @@
-import json
-from urllib import request
+import requests
 
 
 class OllamaConnector:
@@ -17,17 +16,7 @@ class OllamaConnector:
             "prompt": prompt,
             "stream": False,
         }
-        data = json.dumps(payload).encode("utf-8")
 
-        req = request.Request(
-            url=self.base_url,
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-
-        with request.urlopen(req, timeout=self.timeout_seconds) as response:
-            raw = response.read()
-
-        parsed = json.loads(raw.decode("utf-8"))
-        return str(parsed.get("response", ""))
+        response = requests.post(self.base_url, json=payload, timeout=self.timeout_seconds)
+        response.raise_for_status()
+        return str(response.json().get("response", ""))

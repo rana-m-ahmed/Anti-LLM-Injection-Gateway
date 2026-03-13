@@ -1,6 +1,6 @@
 import time
-import urllib.error
 
+import requests
 from fastapi import FastAPI, HTTPException
 
 from injection_detector import InjectionDetector
@@ -97,10 +97,10 @@ def chat_gateway(payload: dict):
 
     except HTTPException:
         raise
-    except urllib.error.HTTPError as exc:
-        raise HTTPException(status_code=503, detail=f"Ollama HTTP error: {exc}")
-    except urllib.error.URLError as exc:
+    except requests.ConnectionError as exc:
         raise HTTPException(status_code=503, detail=f"Ollama connection error: {exc}")
+    except requests.HTTPError as exc:
+        raise HTTPException(status_code=503, detail=f"Ollama HTTP error: {exc}")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Gateway chat failed: {exc}")
 
