@@ -270,7 +270,7 @@ Use this template if you publish results based on this repository:
 
 ## 12. License
 
-Add a license file (for example MIT, Apache-2.0, or GPL-3.0) to clarify reuse terms.
+no license specified yet 
 
 ## 13. Contact
 
