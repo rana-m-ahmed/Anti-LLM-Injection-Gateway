@@ -1,6 +1,5 @@
 import re
 
-
 class InjectionDetector:
     # Detects prompt injection attempts using weighted keyword scoring
 

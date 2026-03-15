@@ -16,7 +16,6 @@ class OllamaConnector:
             "prompt": prompt,
             "stream": False,
         }
-
         response = requests.post(self.base_url, json=payload, timeout=self.timeout_seconds)
         response.raise_for_status()
         return str(response.json().get("response", ""))

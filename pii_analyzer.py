@@ -17,7 +17,7 @@ class PIIAnalyzer:
         self.analyzer = PIIAnalyzer._shared_analyzer
         self.anonymizer = PIIAnalyzer._shared_anonymizer
 
-        # Custom pattern for internal IDs like 01-134241-039 or OT-24-1528
+        # Custom pattern for internal IDs like 01-134241-039 
         internal_id_pattern = Pattern(
             name="custom_internal_id_pattern",
             regex=r"\b(?:\d{2}-\d{6}-\d{3}|OT-\d{2}-\d{4})\b",
