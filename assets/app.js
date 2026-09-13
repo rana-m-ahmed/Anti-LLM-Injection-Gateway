@@ -324,16 +324,25 @@ function renderResult(data) {
   const masked = action === "Mask";
   const chatRequested = state.mode === "chat";
   const hasResponse = typeof data.llm_response === "string" && data.llm_response.length > 0;
-  setText("#injectionStage", data.injection_detected ? `${String(data.injection_severity || "detected")} · score ${score.toFixed(3)}` : `clear · score ${score.toFixed(3)}`);
+  const severity = String(data.injection_severity || "none").toLowerCase();
+  const injectionStatus = data.injection_detected || score === 1 || ["high", "critical"].includes(severity)
+    ? "danger" : score > 0 || !["none", "low"].includes(severity) ? "warning" : "complete";
+  const injectionLabel = injectionStatus === "complete" ? "Clear"
+    : injectionStatus === "danger" ? "Injection detected" : "Signals found";
+  setText("#injectionStage", `${injectionLabel} · ${severity} · score ${score.toFixed(3)}`);
   setText("#privacyStage", data.pii_detected ? `${entities.length} finding${entities.length === 1 ? "" : "s"}${data.pii_sensitivity ? ` · ${data.pii_sensitivity}` : ""}` : "No sensitive entities");
   setText("#policyStage", action === "Unknown" ? `Unknown value: ${String(data.policy_action || "empty")}` : `${action} policy selected`);
   setText("#modelStage", stopped ? "Stopped by policy" : hasResponse ? "Response received" : chatRequested ? "No response returned" : "Not requested");
   $$(".policy-path li").forEach((node) => { node.dataset.status = "complete"; });
+  $("[data-stage='injection']").dataset.status = injectionStatus;
+  if (data.pii_detected || entities.length) $("[data-stage='privacy']").dataset.status = "warning";
   if (masked) $("[data-stage='privacy']").dataset.status = "masked";
+  if (action === "Warn") $("[data-stage='policy']").dataset.status = "warning";
+  if (action === "Unknown") $("[data-stage='policy']").dataset.status = "skipped";
   if (stopped) {
     $("[data-stage='policy']").dataset.status = "stopped";
     $("[data-stage='model']").dataset.status = "skipped";
-  } else if (!chatRequested) {
+  } else if (!chatRequested || !hasResponse) {
     $("[data-stage='model']").dataset.status = "skipped";
   }
 

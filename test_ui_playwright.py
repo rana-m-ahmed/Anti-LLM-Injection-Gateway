@@ -524,6 +524,40 @@ def test_two_hundred_percent_reflow(browser, base_url):
     context.close()
 
 
+@pytest.mark.parametrize("width", [320, 390, 768, 1024, 1440])
+def test_overview_severity_and_responsive_layout(browser, base_url, width):
+    context = browser.new_context(viewport={"width": width, "height": 844})
+    page = context.new_page()
+    _mock_health(page)
+    responses = [
+        _result("Block", injection_score=1.0),
+        _result("Warn", injection_score=0.35, injection_severity="medium"),
+        _result("Allow"),
+    ]
+    page.route("**/api/v1/gateway/process", lambda route: route.fulfill(
+        status=200, content_type="application/json", body=json.dumps(responses.pop(0))))
+    page.goto(base_url)
+    for status, color in [("danger", "rgb(177, 46, 53)"), ("warning", "rgb(130, 89, 0)"), ("complete", "rgb(23, 100, 62)")]:
+        _submit(page)
+        stage = page.locator('[data-stage="injection"]')
+        expect(stage).to_have_attribute("data-status", status)
+        assert stage.locator("i").evaluate("(el) => getComputedStyle(el).backgroundColor") == color
+        if status == "danger":
+            expect(page.locator("#scoreValue")).to_have_text("1.000")
+            expect(page.locator("#injectionStage")).to_contain_text("Injection detected")
+            SCREENSHOT_ROOT.mkdir(parents=True, exist_ok=True)
+            page.screenshot(path=SCREENSHOT_ROOT / f"overview-critical-{width}.png", full_page=True)
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+        assert page.locator(".risk-instrument").evaluate("""el => {
+            const score = el.getBoundingClientRect();
+            const verdict = document.querySelector('.verdict-copy').getBoundingClientRect();
+            return score.left >= verdict.right || score.top >= verdict.bottom;
+        }""")
+        if width < 1024:
+            page.get_by_role("button", name="Back to prompt").click()
+    context.close()
+
+
 def test_visual_snapshots_cover_all_workbench_states(browser, base_url):
     SCREENSHOT_ROOT.mkdir(parents=True, exist_ok=True)
     viewports = {"desktop": (1440, 900), "tablet": (768, 1024), "mobile": (390, 844)}

@@ -524,11 +524,12 @@ kbd {
   display:flex;
   gap:24px;
   align-items:center;
+  flex-wrap:wrap;
   justify-content:space-between
 }
 .verdict-copy {
   min-width:0;
-  flex:1
+  flex:1 1 220px
 }
 .verdict-copy p {
   font-size:12px;
@@ -643,9 +644,13 @@ kbd {
   gap:20px
 }
 .policy-path li {
-  display:flex;
+  display:grid;
+  grid-template-columns:20px 8px minmax(0,1fr);
   gap:12px;
   align-items:baseline
+}
+.policy-path li>div {
+  min-width:0;
 }
 .policy-path li>span {
   font-size:12px;
@@ -673,6 +678,12 @@ kbd {
 }
 .policy-path [data-status=stopped] i {
   background:var(--block)
+}
+.policy-path [data-status=danger] i {
+  background:var(--block)
+}
+.policy-path [data-status=warning] i {
+  background:var(--warn)
 }
 .policy-path [data-status=masked] i {
   background:var(--mask)
