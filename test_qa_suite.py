@@ -171,7 +171,7 @@ def run_qa_suite():
     css_asset = client.get("/assets/ui.css")
     js_asset = client.get("/assets/app.js")
     anime_asset = client.get("/assets/vendor/anime.esm.min.js")
-    font_asset = client.get("/assets/fonts/ibm-plex-mono-regular.woff2")
+    font_asset = client.get("/assets/fonts/inter-latin.woff2")
     assert_test("Static CSS is available", css_asset.status_code == 200 and "text/css" in css_asset.headers.get("content-type", ""))
     assert_test("Application JavaScript is available", js_asset.status_code == 200 and "javascript" in js_asset.headers.get("content-type", ""))
     assert_test("Pinned Anime.js bundle is available", anime_asset.status_code == 200 and "javascript" in anime_asset.headers.get("content-type", ""))

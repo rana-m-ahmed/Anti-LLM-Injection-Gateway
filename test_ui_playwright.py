@@ -135,7 +135,9 @@ def test_health_presets_and_character_count(page, base_url):
     _mock_health(page)
     page.goto(base_url)
     expect(page.get_by_test_id("health-status")).to_contain_text("Gateway healthy")
+    page.locator(".runtime-details summary").click()
     expect(page.get_by_text("test/model", exact=True)).to_be_visible()
+    page.locator(".runtime-details summary").click()
     page.get_by_role("button", name="Clean question").click()
     expect(page.get_by_label("Prompt payload")).to_have_value(
         "Can you explain the difference between symmetric and asymmetric encryption in simple terms?"
@@ -228,22 +230,13 @@ def test_execution_route_switcher_updates_route_and_selected_state(page, base_ur
     expect(page.locator("#routeValue")).to_have_text("/chat")
     expect(page.get_by_role("button", name="Inspect prompt and send allowed content to the model")).to_be_visible()
     expect(page.locator(".mode-track")).to_have_attribute("data-mode", "chat")
-    page.wait_for_timeout(500)
-    position = page.evaluate("""(() => {
-      const track = document.querySelector('.mode-track').getBoundingClientRect();
-      const indicator = document.querySelector('.mode-indicator').getBoundingClientRect();
-      return { track: track.toJSON(), indicator: indicator.toJSON(), transform: getComputedStyle(document.querySelector('.mode-indicator')).transform };
-    })()""")
-    assert position["indicator"]["left"] > position["track"]["left"] + position["track"]["width"] / 2 - 10, position
+    selected = page.locator('input[value="chat"] + span')
+    assert selected.evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(255, 240, 232)"
     page.get_by_text("Security only", exact=True).click()
     expect(page.get_by_label("Security only")).to_be_checked()
     expect(page.locator("#routeValue")).to_have_text("/process")
-    page.wait_for_timeout(320)
-    assert page.evaluate("""(() => {
-      const track = document.querySelector('.mode-track').getBoundingClientRect();
-      const indicator = document.querySelector('.mode-indicator').getBoundingClientRect();
-      return indicator.left < track.left + track.width / 2;
-    })()""")
+    assert page.locator('input[value="process"] + span').evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(255, 240, 232)"
+
 
 
 @pytest.mark.parametrize("status", [422, 401, 429, 500, 503])
@@ -342,7 +335,7 @@ def test_responsive_layout_has_no_horizontal_overflow(browser, base_url, viewpor
     expect(page.get_by_role("heading", name="Compose")).to_be_visible()
     overflow = page.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth")
     assert overflow is False
-    if viewport[0] < 900:
+    if viewport[0] < 1024:
         expect(page.locator(".mobile-steps")).to_be_visible()
         expect(page.get_by_role("heading", name="Evidence")).to_be_hidden()
     else:
@@ -443,9 +436,97 @@ def test_long_evidence_is_contained_at_320px(browser, base_url):
     context.close()
 
 
+@pytest.mark.parametrize("width,height", [(320, 568), (390, 500), (768, 1024), (900, 600), (1024, 768)])
+def test_readability_actions_and_details_are_reachable(browser, base_url, width, height):
+    context = browser.new_context(viewport={"width": width, "height": height})
+    page = context.new_page()
+    _mock_health(page)
+    page.goto(base_url)
+    page.locator(".runtime-details summary").click()
+    expect(page.get_by_text("test/model", exact=True)).to_be_visible()
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    page.locator(".runtime-details summary").click()
+    assert page.get_by_label("Prompt payload").evaluate("(el) => parseFloat(getComputedStyle(el).fontSize)") >= 16
+    for selector in [".preset", ".mode-track label", "#submitButton"]:
+        target = page.locator(selector).first
+        target.scroll_into_view_if_needed()
+        rect = target.bounding_box()
+        assert rect["height"] >= 44
+        assert target.evaluate("""el => {
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.x+r.width/2, r.y+r.height/2);
+          return el === hit || el.contains(hit);
+        }""")
+    context.close()
+
+
+@pytest.mark.parametrize("motion,fallback", [("no-preference", False), ("reduce", False), ("no-preference", True)])
+def test_route_selection_visual_keyboard_and_endpoint(browser, base_url, motion, fallback):
+    context = browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion=motion)
+    page = context.new_page()
+    _mock_health(page)
+    if fallback:
+        page.route("**/assets/vendor/anime.esm.min.js", lambda route: route.abort())
+    requests = []
+    def respond(route):
+        requests.append(route.request.url.rsplit("/", 1)[-1])
+        route.fulfill(status=200, content_type="application/json", body=json.dumps(_result()))
+    page.route("**/api/v1/gateway/process", respond)
+    page.route("**/api/v1/gateway/chat", respond)
+    page.goto(base_url)
+    page.get_by_label("Prompt payload").fill("Route test")
+    for mode in ["chat", "process", "chat"]:
+        page.locator('input[value="process"]').focus()
+        page.keyboard.press("Space")
+        if mode == "chat":
+            page.keyboard.press("ArrowRight")
+        expect(page.locator(f'input[value="{mode}"]')).to_be_checked()
+        assert page.locator(f'input[value="{mode}"] + span').evaluate("(el) => getComputedStyle(el).backgroundColor") == "rgb(255, 240, 232)"
+        page.get_by_test_id("submit-button").click()
+        expect(page.get_by_test_id("results-container")).to_be_visible()
+        assert requests[-1] == mode
+        page.get_by_role("button", name="Back to prompt").click()
+    context.close()
+
+
+def test_light_palette_contrast(page, base_url):
+    page.goto(base_url)
+    ratios = page.evaluate("""() => {
+      const style = getComputedStyle(document.documentElement);
+      const luminance = hex => {
+        const rgb = hex.trim().replace('#','').match(/../g).map(v=>parseInt(v,16)/255)
+          .map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+        return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;
+      };
+      return ['--text','--muted','--accent','--allow','--mask','--warn','--block','--control']
+        .map(name=>[name, ...['#ffffff','#f5f3ee'].map(bg=>{
+          const a=luminance(style.getPropertyValue(name)),b=luminance(bg);
+          return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+        })]);
+    }""")
+    for name, *ratios_on_surfaces in ratios:
+        assert min(ratios_on_surfaces) >= (3 if name == "--control" else 4.5), (name, ratios_on_surfaces)
+
+
+def test_two_hundred_percent_reflow(browser, base_url):
+    # 1440x900 desktop at 200% browser zoom has a 720x450 CSS viewport.
+    context = browser.new_context(viewport={"width": 720, "height": 450}, device_scale_factor=2)
+    page = context.new_page()
+    _mock_health(page)
+    page.goto(base_url)
+    page.evaluate("document.fonts.ready")
+    assert page.evaluate("document.fonts.check('16px Inter')")
+    page.get_by_label("Prompt payload").fill("Text remains readable at zoom")
+    page.get_by_text("Security + model", exact=True).click()
+    expect(page.get_by_label("Security + model")).to_be_checked()
+    page.get_by_test_id("submit-button").scroll_into_view_if_needed()
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth")
+    context.close()
+
+
 def test_visual_snapshots_cover_all_workbench_states(browser, base_url):
     SCREENSHOT_ROOT.mkdir(parents=True, exist_ok=True)
-    viewports = {"desktop": (1440, 900), "mobile": (390, 844)}
+    viewports = {"desktop": (1440, 900), "tablet": (768, 1024), "mobile": (390, 844)}
     result_states = {
         "allowed": _result("Allow"),
         "masked": _result("Mask", sanitized_prompt="Email <EMAIL_ADDRESS>"),
@@ -473,7 +554,7 @@ def test_visual_snapshots_cover_all_workbench_states(browser, base_url):
                 if visual_state == "scanning":
                     expect(page.get_by_test_id("loading-state")).to_be_visible()
                 elif visual_state == "error":
-                    expect(page.locator("#formError") if device == "mobile" else page.get_by_test_id("request-error")).to_contain_text("503")
+                    expect(page.locator("#formError") if device != "desktop" else page.get_by_test_id("request-error")).to_contain_text("503")
                     page.wait_for_timeout(450)
                 else:
                     expect(page.get_by_test_id("results-container")).to_be_visible()

@@ -75,10 +75,10 @@ function setView(view, { focus = false } = {}) {
     if (current) button.setAttribute("aria-current", "step");
     else button.removeAttribute("aria-current");
   });
-  if (window.innerWidth < 900) {
+  if (window.innerWidth < 1024) {
     window.scrollTo({ top: 0, behavior: "auto" });
   }
-  if (focus && window.innerWidth < 900) {
+  if (focus && window.innerWidth < 1024) {
     requestAnimationFrame(() => (view === "compose" ? $("#composeTitle") : elements.evidenceTitle).focus?.({ preventScroll: true }));
   }
   animateMobileView();
@@ -120,10 +120,11 @@ function showRequestError(message) {
   setPhase("error");
   elements.requestError.textContent = message;
   showSurface("error");
-  if (window.innerWidth < 900) {
+  if (window.innerWidth < 1024) {
     setView("compose");
     showFormError(message);
-    elements.submit.focus({ preventScroll: false });
+    elements.formError.tabIndex = -1;
+    elements.formError.focus({ preventScroll: false });
   } else {
     elements.requestError.focus({ preventScroll: false });
   }
@@ -202,7 +203,7 @@ async function submitPrompt(event) {
   elements.requestError.textContent = "";
   setPhase("submitting");
   showSurface("loading");
-  if (window.innerWidth < 900) setView("evidence");
+  if (window.innerWidth < 1024) setView("evidence");
   startScanMotion();
 
   state.controller?.abort();
@@ -227,7 +228,7 @@ async function submitPrompt(event) {
     showSurface("results");
     setView("evidence");
     animateResult(Number(data.injection_score) || 0);
-    if (window.innerWidth < 900) {
+    if (window.innerWidth < 1024) {
       window.scrollTo({ top: 0, behavior: "auto" });
       requestAnimationFrame(() => $("#verdictTitle").focus({ preventScroll: true }));
     }
@@ -395,27 +396,21 @@ function runAnimation(targets, params) {
 
 function animatePress(target) {
   if (!target) return;
-  runAnimation(target, { scale: [0.97, 1], duration: 360, ease: "out(4)" });
+  runAnimation(target, { scale: [0.97, 1], duration: 200, ease: "out(4)" });
 }
 
 function animateMobileView() {
-  if (window.innerWidth >= 900) return;
-  const panel = $(`[data-mobile-panel="${state.view}"]`);
-  runAnimation(panel, { opacity: [0, 1], translateX: state.view === "evidence" ? [18, 0] : [-18, 0], duration: 360, ease: "out(4)" });
+  // View containers never receive transforms or opacity styles.
 }
 
 function animateTabPanel(name) {
-  runAnimation($(`[data-tab-panel="${name}"]`), { opacity: [0, 1], translateY: [7, 0], duration: 280, ease: "out(4)" });
+  runAnimation($(`[data-tab-panel="${name}"]`), { opacity: [0, 1], translateY: [7, 0], duration: 200, ease: "out(4)" });
 }
 
 function startScanMotion() {
   stopScanMotion();
-  if (!state.anime || state.reducedMotion) return;
-  const ring = runAnimation(".ring-b", { rotate: 360, duration: 4200, loop: true, ease: "linear" });
-  const signal = runAnimation("#scanSignal", { rotate: 360, duration: 1250, loop: true, ease: "linear" });
-  const button = runAnimation(".button-signal", { translateX: ["0%", "520%"], duration: 950, loop: true, ease: "inOut(2)" });
-  const stages = runAnimation(".loading-stages li", { opacity: [.32, 1, .32], delay: state.anime.stagger(160), duration: 900, loop: true, ease: "inOut(2)" });
-  state.scanAnimations = [ring, signal, button, stages].filter(Boolean);
+  const signal = runAnimation("#scanSignal", { translateX: [0, 80], alternate: true, duration: 800, loop: true, ease: "inOut(2)" });
+  state.scanAnimations = [signal].filter(Boolean);
 }
 
 function stopScanMotion(settle = false) {
@@ -427,27 +422,9 @@ function stopScanMotion(settle = false) {
 }
 
 function animateResult(score) {
-  if (!state.anime || state.reducedMotion) {
-    setText("#scoreValue", score.toFixed(3));
-    return;
-  }
-  try {
-    const timeline = state.anime.createTimeline({ defaults: { ease: "out(4)" } });
-    timeline
-      .add(".verdict-block", { opacity: [0, 1], translateY: [18, 0], duration: 420 })
-      .add(".telemetry > div", { opacity: [0, 1], translateX: [12, 0], delay: state.anime.stagger(45), duration: 300 }, "-=260")
-      .add(".policy-path li", { opacity: [0, 1], translateY: [8, 0], delay: state.anime.stagger(55), duration: 280 }, "-=180");
-    const counter = { value: 0 };
-    state.anime.animate(counter, {
-      value: score,
-      duration: 680,
-      ease: "out(4)",
-      onUpdate: () => setText("#scoreValue", counter.value.toFixed(3)),
-    });
-    runAnimation("#gaugeValue", { strokeDashoffset: [301.6, 301.6 * (1 - score)], duration: 720, ease: "out(4)" });
-  } catch (_error) {
-    setText("#scoreValue", score.toFixed(3));
-  }
+  // Numeric output is exact immediately; only inner content receives motion.
+  setText("#scoreValue", score.toFixed(3));
+  runAnimation(".verdict-copy", { opacity: [0, 1], translateY: [6, 0], duration: 200, ease: "out(4)" });
 }
 
 async function loadMotion() {
@@ -457,18 +434,13 @@ async function loadMotion() {
     state.scope = anime.createScope({
       root: "#appFrame",
       mediaQueries: {
-        mobile: "(max-width: 899px)",
+        mobile: "(max-width: 1023px)",
         reduceMotion: "(prefers-reduced-motion: reduce)",
       },
     }).add((scope) => {
       state.reducedMotion = Boolean(scope.matches?.reduceMotion);
       if (state.reducedMotion) return;
-      const timeline = anime.createTimeline({ defaults: { ease: "out(4)" } });
-      timeline
-        .add("[data-motion='command']", { opacity: [0, 1], translateY: [-9, 0], duration: 360 })
-        .add("[data-motion='compose']", { opacity: [0, 1], translateX: [-12, 0], duration: 440 }, "-=230")
-        .add("[data-motion='evidence']", { opacity: [0, 1], translateY: [12, 0], duration: 480 }, "-=340")
-        .add(".stage-node", { opacity: [0, 1], translateY: [7, 0], delay: anime.stagger(55), duration: 280 }, "-=280");
+      anime.animate(".empty-copy", { opacity: [0, 1], duration: 200, ease: "out(4)" });
     });
   } catch (_error) {
     document.documentElement.dataset.motion = "fallback";

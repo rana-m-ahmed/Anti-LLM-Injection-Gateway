@@ -178,10 +178,10 @@ python -m pytest -q test_ui_playwright.py
 ```
 
 The browser suite exercises 320, 390, 768, 900, 1024, 1440, and 1920px layouts,
-the mobile Compose → Evidence workflow, reduced motion, policy and failure
+the mobile Compose → Evidence workflow below 1024px, reduced motion, policy and failure
 states, safe rendering, keyboard navigation, and visual snapshots. The UI stays
 zero-build: FastAPI serves the semantic shell, dedicated CSS/application modules,
-local IBM Plex fonts, and the pinned Anime.js 4.5.0 ESM bundle from `/assets`.
+local Inter fonts, and the pinned Anime.js 4.5.0 ESM bundle from `/assets`.
 
 Live Groq inference is intentionally excluded from default QA. Opt in only when a valid key is configured:
 

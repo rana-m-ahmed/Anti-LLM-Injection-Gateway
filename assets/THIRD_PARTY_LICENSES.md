@@ -1,5 +1,11 @@
 # Third-party frontend assets
 
+## Inter
+
+The local variable Inter font is distributed by @fontsource-variable/inter
+5.2.5 under the SIL Open Font License 1.1. The complete notice is included
+in fonts/LICENSE-inter.txt. Source: https://github.com/rsms/inter
+
 ## Anime.js 4.5.0
 
 Source: https://github.com/juliangarnier/anime

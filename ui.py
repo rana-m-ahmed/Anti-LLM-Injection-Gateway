@@ -5,19 +5,14 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#090b0d">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F5F3EE">
   <title>Anti-LLM Injection Gateway</title>
   <link rel="stylesheet" href="/assets/ui.css">
   <script type="module" src="/assets/app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#promptInput">Skip to prompt</a>
-  <div class="atmosphere" aria-hidden="true">
-    <div class="grid-plane"></div>
-    <div class="signal-line"></div>
-  </div>
-
   <div id="appFrame" class="app-frame" data-view="compose" data-state="idle">
     <header class="command-bar" data-motion="command">
       <a class="identity" href="/" aria-label="Anti-LLM Injection Gateway home">
@@ -39,6 +34,7 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
       </div>
 
       <div class="runtime-cluster">
+        <details class="runtime-details"><summary>Gateway details</summary><div class="runtime-content">
         <div class="runtime-data runtime-model">
           <span>Model</span>
           <strong id="modelValue">Resolving</strong>
@@ -47,14 +43,12 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
           <span>Gateway</span>
           <strong id="versionValue">v--</strong>
         </div>
+        <nav class="resource-links" aria-label="Gateway resources"><a href="/docs" target="_blank" rel="noopener noreferrer">Docs</a><a href="/api/v1/gateway/health" target="_blank" rel="noopener noreferrer">Health</a></nav></div></details>
         <div id="healthStatus" class="health-status" data-state="checking" role="status" aria-live="polite" data-testid="health-status">
           <span class="health-orbit" aria-hidden="true"><i></i></span>
           <span id="healthText">Checking</span>
         </div>
-        <nav class="resource-links" aria-label="Gateway resources">
-          <a href="/docs" target="_blank" rel="noopener noreferrer">Docs<span aria-hidden="true">↗</span></a>
-          <a href="/api/v1/gateway/health" target="_blank" rel="noopener noreferrer">Health<span aria-hidden="true">↗</span></a>
-        </nav>
+
       </div>
     </header>
 
@@ -75,7 +69,7 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
             <p class="section-index">01 / Prompt intake</p>
             <h1 id="composeTitle" tabindex="-1">Compose</h1>
           </div>
-          <span class="panel-code">INPUT::UTF-8</span>
+
         </header>
 
         <form id="promptForm" class="compose-form" novalidate data-testid="prompt-form">
@@ -100,22 +94,24 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
               <small id="charCount" aria-live="polite">0 / 50,000</small>
             </div>
             <div class="editor-shell">
-              <div class="editor-gutter" aria-hidden="true"><span>01</span><span>02</span><span>03</span><span>04</span><span>05</span><span>06</span></div>
+
               <textarea id="promptInput" name="prompt" maxlength="50000" spellcheck="false" aria-describedby="charCount formError" placeholder="Enter a prompt to inspect..." data-testid="prompt-input"></textarea>
-              <div class="editor-corner" aria-hidden="true"></div>
+
             </div>
-            <p id="formError" class="form-error" role="alert" hidden></p>
+
           </div>
 
+          <div class="compose-footer">
           <fieldset class="mode-control">
             <legend>Execution route</legend>
             <div class="mode-track">
-              <span id="modeIndicator" class="mode-indicator" aria-hidden="true"></span>
+
               <label><input type="radio" name="mode" value="process" checked><span>Security only</span></label>
               <label><input type="radio" name="mode" value="chat"><span>Security + model</span></label>
             </div>
           </fieldset>
 
+          <p id="formError" class="form-error" role="alert" hidden></p>
           <div class="compose-actions">
             <p><kbd>Ctrl</kbd><span>+</span><kbd>Enter</kbd> to execute</p>
             <button id="submitButton" class="execute-button" type="submit" aria-label="Inspect prompt without model inference" data-testid="submit-button">
@@ -123,6 +119,7 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
               <span id="submitLabel">Run inspection</span>
               <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h11M11 6l4 4-4 4" stroke="currentColor" stroke-width="1.5"/></svg>
             </button>
+          </div>
           </div>
         </form>
       </section>
@@ -142,32 +139,24 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
         <div id="emptyState" class="empty-state" data-testid="empty-state">
           <div class="empty-copy" data-motion="empty-copy">
             <span class="overline">Four-stage defense</span>
-            <h3>Trace every decision<br>before inference.</h3>
+            <h3>A clear view of every decision.</h3>
             <p>The gateway inspects instruction integrity and sensitive data, then resolves a policy before any model receives the prompt.</p>
           </div>
           <div class="defense-map" aria-label="Gateway stages: injection scan, privacy scan, policy decision, model inference" data-motion="map">
-            <svg class="map-lines" viewBox="0 0 640 290" preserveAspectRatio="none" aria-hidden="true">
-              <path class="path-base" d="M70 145H570"/>
-              <path id="pathSignal" class="path-signal" d="M70 145H570"/>
-            </svg>
-            <div class="stage-node node-1"><span>01</span><strong>Injectionless</strong><small>Injection scan</small></div>
+
+            <div class="stage-node node-1"><span>01</span><strong>Inspect</strong><small>Injection scan</small></div>
             <div class="stage-node node-2"><span>02</span><strong>Private</strong><small>PII + secrets</small></div>
             <div class="stage-node node-3"><span>03</span><strong>Decide</strong><small>Policy engine</small></div>
             <div class="stage-node node-4"><span>04</span><strong>Forward</strong><small>Model route</small></div>
-            <div class="map-core" aria-hidden="true"><span></span><i></i></div>
+
           </div>
           <button id="emptyAction" class="quiet-action" type="button">Load a clean test vector <span aria-hidden="true">→</span></button>
         </div>
 
         <div id="loadingState" class="loading-state" role="status" aria-live="polite" hidden data-testid="loading-state">
-          <div class="scan-visual" aria-hidden="true">
-            <div class="scan-ring ring-a"></div><div class="scan-ring ring-b"></div>
-            <div class="scan-axis axis-x"></div><div class="scan-axis axis-y"></div>
-            <div id="scanSignal" class="scan-signal"></div>
-            <span>SEC</span>
-          </div>
+          <div id="scanSignal" class="scan-signal" aria-hidden="true"></div>
           <div class="loading-copy">
-            <p>INSPECTION ACTIVE</p>
+            <p>Inspection in progress</p>
             <h3>Resolving policy path</h3>
             <span>No content is forwarded until the gateway completes.</span>
           </div>
@@ -182,7 +171,7 @@ GATEWAY_HTML_UI = r"""<!DOCTYPE html>
           <div class="result-summary" data-motion="result-summary">
             <div id="verdictCard" class="verdict-block" data-action="Unknown">
               <div class="verdict-copy">
-                <p>POLICY VERDICT</p>
+                <p>Policy verdict</p>
                 <h3 id="verdictTitle" tabindex="-1">Unknown decision</h3>
                 <span id="verdictSubtitle">The returned policy action is not recognized.</span>
               </div>
