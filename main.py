@@ -10,7 +10,8 @@ load_dotenv()
 import groq
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -18,6 +19,7 @@ from injection_detector import InjectionDetector
 from llm_connector import GroqConnector
 from pii_analyzer import PIIAnalyzer
 from policy_engine import PolicyEngine
+from ui import GATEWAY_HTML_UI
 
 # ── App Version ──
 APP_VERSION = "2.0.0"
@@ -134,6 +136,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# ── Vercel Path Normalization Middleware ──
+class VercelPathCorrectionMiddleware(BaseHTTPMiddleware):
+    """
+    Ensures URL paths are preserved if a Vercel serverless rewrite
+    prepends /api/index.py or /api/index to the request path.
+    """
+    async def dispatch(self, request: Request, call_next):
+        path = request.scope.get("path", "")
+        for prefix in ["/api/index.py", "/api/index"]:
+            if path == prefix:
+                request.scope["path"] = "/"
+                break
+            elif path.startswith(prefix + "/"):
+                request.scope["path"] = path[len(prefix):]
+                break
+        return await call_next(request)
+
+
+app.add_middleware(VercelPathCorrectionMiddleware)
+
 # ── Component Initialization ──
 injection_detector = InjectionDetector(threshold=0.55)
 pii_analyzer = PIIAnalyzer()
@@ -212,19 +235,29 @@ def run_gateway_pipeline(prompt, request_id):
 
 # ── API Endpoints ──
 
-@app.get("/", tags=["Info"])
-def root():
-    """Gateway information and documentation links."""
-    return {
-        "service": "Anti-LLM Injection Gateway",
-        "version": APP_VERSION,
-        "docs": "/docs",
-        "endpoints": {
-            "process": "POST /api/v1/gateway/process — Security analysis only",
-            "chat": "POST /api/v1/gateway/chat — Security analysis + LLM inference",
-            "health": "GET /api/v1/gateway/health — Service health check",
-        },
-    }
+@app.get("/", response_class=HTMLResponse, tags=["UI"])
+def root(request: Request):
+    """Serve the interactive Web UI for browsers, or JSON info for API clients."""
+    accept = request.headers.get("accept", "")
+    if "application/json" in accept and "text/html" not in accept:
+        return JSONResponse(content={
+            "service": "Anti-LLM Injection Gateway",
+            "version": APP_VERSION,
+            "docs": "/docs",
+            "ui": "/",
+            "endpoints": {
+                "process": "POST /api/v1/gateway/process — Security analysis only",
+                "chat": "POST /api/v1/gateway/chat — Security analysis + LLM inference",
+                "health": "GET /api/v1/gateway/health — Service health check",
+            },
+        })
+    return HTMLResponse(content=GATEWAY_HTML_UI)
+
+
+@app.get("/ui", response_class=HTMLResponse, tags=["UI"])
+def ui():
+    """Direct route to the interactive Web UI."""
+    return HTMLResponse(content=GATEWAY_HTML_UI)
 
 
 @app.get("/api/v1/gateway/health", response_model=HealthResponse, tags=["Health"])

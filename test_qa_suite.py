@@ -145,9 +145,13 @@ def run_qa_suite():
     print("--- [4/5] Testing FastAPI Endpoints (TestClient) ---")
     client = TestClient(app)
 
-    # 4.1 Root Info endpoint
-    r = client.get("/")
-    assert_test("GET / info endpoint", r.status_code == 200 and "Anti-LLM Injection Gateway" in r.json()["service"])
+    # 4.1 Root UI & JSON endpoints
+    r_ui = client.get("/")
+    assert_test("GET / Web UI HTML", r_ui.status_code == 200 and "<!DOCTYPE html>" in r_ui.text)
+    r_json = client.get("/", headers={"accept": "application/json"})
+    assert_test("GET / JSON API info", r_json.status_code == 200 and "Anti-LLM Injection Gateway" in r_json.json()["service"])
+    r_direct_ui = client.get("/ui")
+    assert_test("GET /ui Web UI direct", r_direct_ui.status_code == 200 and "<!DOCTYPE html>" in r_direct_ui.text)
 
     # 4.2 Health Check endpoint
     r = client.get("/api/v1/gateway/health")
@@ -191,7 +195,7 @@ def run_qa_suite():
         v_conf = json.load(f)
     assert_test("vercel.json is valid JSON", isinstance(v_conf, dict))
     assert_test("vercel.json has maxDuration >= 60", "functions" in v_conf and v_conf["functions"]["api/index.py"]["maxDuration"] >= 60)
-    assert_test("vercel.json has rewrites to api/index.py", any(rw.get("destination") == "/api/index.py" for rw in v_conf.get("rewrites", [])))
+    assert_test("vercel.json has rewrites to api/index.py", any(rw.get("destination", "").startswith("/api/index.py") for rw in v_conf.get("rewrites", [])))
 
     # 5.2 api/index.py imports app
     assert_test("api/index.py exports app", hasattr(api.index, "app"))
