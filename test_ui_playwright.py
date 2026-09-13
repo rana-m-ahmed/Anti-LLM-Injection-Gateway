@@ -227,9 +227,23 @@ def test_execution_route_switcher_updates_route_and_selected_state(page, base_ur
     expect(page.get_by_label("Security + model")).to_be_checked()
     expect(page.locator("#routeValue")).to_have_text("/chat")
     expect(page.get_by_role("button", name="Inspect prompt and send allowed content to the model")).to_be_visible()
+    expect(page.locator(".mode-track")).to_have_attribute("data-mode", "chat")
+    page.wait_for_timeout(500)
+    position = page.evaluate("""(() => {
+      const track = document.querySelector('.mode-track').getBoundingClientRect();
+      const indicator = document.querySelector('.mode-indicator').getBoundingClientRect();
+      return { track: track.toJSON(), indicator: indicator.toJSON(), transform: getComputedStyle(document.querySelector('.mode-indicator')).transform };
+    })()""")
+    assert position["indicator"]["left"] > position["track"]["left"] + position["track"]["width"] / 2 - 10, position
     page.get_by_text("Security only", exact=True).click()
     expect(page.get_by_label("Security only")).to_be_checked()
     expect(page.locator("#routeValue")).to_have_text("/process")
+    page.wait_for_timeout(320)
+    assert page.evaluate("""(() => {
+      const track = document.querySelector('.mode-track').getBoundingClientRect();
+      const indicator = document.querySelector('.mode-indicator').getBoundingClientRect();
+      return indicator.left < track.left + track.width / 2;
+    })()""")
 
 
 @pytest.mark.parametrize("status", [422, 401, 429, 500, 503])

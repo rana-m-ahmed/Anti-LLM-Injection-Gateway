@@ -147,7 +147,6 @@ function updateMode(mode) {
     "aria-label",
     state.mode === "chat" ? "Inspect prompt and send allowed content to the model" : "Inspect prompt without model inference",
   );
-  animatePress($(".mode-indicator"));
 }
 
 async function fetchHealth() {
