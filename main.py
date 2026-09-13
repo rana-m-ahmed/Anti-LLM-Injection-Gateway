@@ -140,18 +140,24 @@ app.add_middleware(
 # ── Vercel Path Normalization Middleware ──
 class VercelPathCorrectionMiddleware(BaseHTTPMiddleware):
     """
-    Ensures URL paths are preserved if a Vercel serverless rewrite
-    prepends /api/index.py or /api/index to the request path.
+    Ensures URL paths are preserved across Vercel serverless rewrites
+    by checking Vercel's x-matched-path / x-invoke-path headers,
+    or stripping the /api/index prefix.
     """
     async def dispatch(self, request: Request, call_next):
-        path = request.scope.get("path", "")
-        for prefix in ["/api/index.py", "/api/index"]:
-            if path == prefix:
-                request.scope["path"] = "/"
-                break
-            elif path.startswith(prefix + "/"):
-                request.scope["path"] = path[len(prefix):]
-                break
+        matched_path = request.headers.get("x-matched-path") or request.headers.get("x-invoke-path")
+        if matched_path:
+            # Vercel sends the true original requested path in x-matched-path
+            request.scope["path"] = matched_path
+        else:
+            path = request.scope.get("path", "")
+            for prefix in ["/api/index.py", "/api/index"]:
+                if path == prefix:
+                    request.scope["path"] = "/"
+                    break
+                elif path.startswith(prefix + "/"):
+                    request.scope["path"] = path[len(prefix):]
+                    break
         return await call_next(request)
 
 

@@ -195,7 +195,7 @@ def run_qa_suite():
         v_conf = json.load(f)
     assert_test("vercel.json is valid JSON", isinstance(v_conf, dict))
     assert_test("vercel.json has maxDuration >= 60", "functions" in v_conf and v_conf["functions"]["api/index.py"]["maxDuration"] >= 60)
-    assert_test("vercel.json has rewrites to api/index.py", any(rw.get("destination", "").startswith("/api/index.py") for rw in v_conf.get("rewrites", [])))
+    assert_test("vercel.json has rewrites to /api/index", any(rw.get("destination", "").startswith("/api/index") for rw in v_conf.get("rewrites", [])))
 
     # 5.2 api/index.py imports app
     assert_test("api/index.py exports app", hasattr(api.index, "app"))
