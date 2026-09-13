@@ -1,7 +1,9 @@
 import os
+import mimetypes
 import time
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -11,6 +13,7 @@ import groq
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -127,6 +130,10 @@ app = FastAPI(
     version=APP_VERSION,
     lifespan=lifespan,
 )
+
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+mimetypes.add_type("font/woff2", ".woff2")
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
 
 # ── CORS Middleware ──
 app.add_middleware(

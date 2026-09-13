@@ -152,16 +152,30 @@ def run_qa_suite():
     r_direct_ui = client.get("/ui")
     assert_test("GET /ui Web UI direct", r_direct_ui.status_code == 200 and "<!DOCTYPE html>" in r_direct_ui.text)
 
-    # Editorial workbench contract and accessibility baseline
+    # Precision-instrument workbench contract and accessibility baseline
     ui_html = r_ui.text
+    with open("assets/app.js", "r", encoding="utf-8") as frontend_file:
+        app_js = frontend_file.read()
     assert_test("UI has a labelled prompt control", 'for="promptInput"' in ui_html and 'id="promptInput"' in ui_html)
     assert_test("UI enforces the API prompt limit", 'maxlength="50000"' in ui_html)
-    assert_test("UI presets use semantic buttons", '<button class="preset" type="button"' in ui_html)
+    assert_test("UI presets use semantic buttons", 'type="button" class="preset"' in ui_html)
     assert_test("UI exposes live status regions", 'aria-live="polite"' in ui_html and 'role="alert"' in ui_html)
     assert_test("UI includes deterministic browser hooks", 'data-testid="prompt-form"' in ui_html and 'data-testid="results-container"' in ui_html)
-    assert_test("UI has no browser alert or inline click handlers", "alert(" not in ui_html and "onclick=" not in ui_html)
-    assert_test("UI has no external font dependency", "fonts.googleapis.com" not in ui_html)
-    assert_test("UI health status is API-backed", 'fetchJson("/api/v1/gateway/health"' in ui_html)
+    assert_test("UI has no browser alert or inline click handlers", "window.alert(" not in app_js and "onclick=" not in ui_html)
+    assert_test("UI has no runtime third-party requests", "fonts.googleapis.com" not in ui_html and "cdn.jsdelivr.net" not in ui_html and "cdn.jsdelivr.net" not in app_js)
+    assert_test("UI health status is API-backed", 'fetch("/api/v1/gateway/health"' in app_js)
+    assert_test("UI uses a mobile two-step workflow", 'data-mobile-view="compose"' in ui_html and 'data-mobile-view="evidence"' in ui_html)
+    assert_test("UI loads dedicated local assets", '/assets/ui.css' in ui_html and '/assets/app.js' in ui_html)
+
+    # Static assets remain first-class FastAPI routes with correct content types.
+    css_asset = client.get("/assets/ui.css")
+    js_asset = client.get("/assets/app.js")
+    anime_asset = client.get("/assets/vendor/anime.esm.min.js")
+    font_asset = client.get("/assets/fonts/ibm-plex-mono-regular.woff2")
+    assert_test("Static CSS is available", css_asset.status_code == 200 and "text/css" in css_asset.headers.get("content-type", ""))
+    assert_test("Application JavaScript is available", js_asset.status_code == 200 and "javascript" in js_asset.headers.get("content-type", ""))
+    assert_test("Pinned Anime.js bundle is available", anime_asset.status_code == 200 and "javascript" in anime_asset.headers.get("content-type", ""))
+    assert_test("Local technical font is available", font_asset.status_code == 200 and ("font/woff2" in font_asset.headers.get("content-type", "") or "application/font-woff" in font_asset.headers.get("content-type", "")))
 
     # 4.2 Health Check endpoint
     r = client.get("/api/v1/gateway/health")
