@@ -16,7 +16,6 @@ from pii_analyzer import PIIAnalyzer
 from policy_engine import PolicyEngine
 from llm_connector import GroqConnector
 from main import app
-import api.index
 
 def run_qa_suite():
     print("=" * 70)
@@ -194,11 +193,12 @@ def run_qa_suite():
     with open("vercel.json", "r") as f:
         v_conf = json.load(f)
     assert_test("vercel.json is valid JSON", isinstance(v_conf, dict))
-    assert_test("vercel.json has maxDuration >= 60", "functions" in v_conf and v_conf["functions"]["api/index.py"]["maxDuration"] >= 60)
-    assert_test("vercel.json has rewrites to /api/index", any(rw.get("destination", "").startswith("/api/index") for rw in v_conf.get("rewrites", [])))
+    assert_test("vercel.json has maxDuration >= 60", "functions" in v_conf and v_conf["functions"]["main.py"]["maxDuration"] >= 60)
+    assert_test("vercel.json avoids path-mangling rewrites", "rewrites" not in v_conf or len(v_conf["rewrites"]) == 0)
 
-    # 5.2 api/index.py imports app
-    assert_test("api/index.py exports app", hasattr(api.index, "app"))
+    # 5.2 main.py exports app
+    import main
+    assert_test("main.py exports app", hasattr(main, "app"))
 
     # 5.3 .gitignore protects secrets
     with open(".gitignore", "r") as f:
