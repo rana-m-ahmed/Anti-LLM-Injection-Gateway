@@ -161,7 +161,30 @@ python main.py
 
 ---
 
-## 🧪 Testing Examples
+## 🧪 Automated QA
+
+Run the deterministic detector, PII, policy, API, UI-contract, and deployment suite:
+
+```bash
+python test_qa_suite.py
+```
+
+Run the isolated Chromium interaction and responsive-layout suite:
+
+```bash
+pip install -r requirements-dev.txt
+python -m playwright install chromium --no-shell
+python -m pytest -q test_ui_playwright.py
+```
+
+Live Groq inference is intentionally excluded from default QA. Opt in only when a valid key is configured:
+
+```powershell
+$env:RUN_LIVE_GROQ="1"
+python test_qa_suite.py
+```
+
+## Testing Examples
 
 **Injection Attack (→ Block):**
 ```bash

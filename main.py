@@ -107,12 +107,13 @@ class ErrorResponse(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    print(f"🛡️  Anti-LLM Injection Gateway v{APP_VERSION} starting...")
-    print(f"🤖 Model: {groq_connector.model}")
-    print(f"🔍 Injection threshold: {injection_detector.threshold}")
-    print(f"📡 Gateway ready.")
+    # Keep startup output ASCII-safe for redirected Windows/CI streams.
+    print(f"[gateway] Anti-LLM Injection Gateway v{APP_VERSION} starting...")
+    print(f"[gateway] Model: {groq_connector.model}")
+    print(f"[gateway] Injection threshold: {injection_detector.threshold}")
+    print("[gateway] Ready.")
     yield
-    print("🛑 Gateway shutting down.")
+    print("[gateway] Shutting down.")
 
 
 app = FastAPI(

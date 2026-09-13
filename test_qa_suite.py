@@ -152,6 +152,17 @@ def run_qa_suite():
     r_direct_ui = client.get("/ui")
     assert_test("GET /ui Web UI direct", r_direct_ui.status_code == 200 and "<!DOCTYPE html>" in r_direct_ui.text)
 
+    # Editorial workbench contract and accessibility baseline
+    ui_html = r_ui.text
+    assert_test("UI has a labelled prompt control", 'for="promptInput"' in ui_html and 'id="promptInput"' in ui_html)
+    assert_test("UI enforces the API prompt limit", 'maxlength="50000"' in ui_html)
+    assert_test("UI presets use semantic buttons", '<button class="preset" type="button"' in ui_html)
+    assert_test("UI exposes live status regions", 'aria-live="polite"' in ui_html and 'role="alert"' in ui_html)
+    assert_test("UI includes deterministic browser hooks", 'data-testid="prompt-form"' in ui_html and 'data-testid="results-container"' in ui_html)
+    assert_test("UI has no browser alert or inline click handlers", "alert(" not in ui_html and "onclick=" not in ui_html)
+    assert_test("UI has no external font dependency", "fonts.googleapis.com" not in ui_html)
+    assert_test("UI health status is API-backed", 'fetchJson("/api/v1/gateway/health"' in ui_html)
+
     # 4.2 Health Check endpoint
     r = client.get("/api/v1/gateway/health")
     assert_test("GET /api/v1/gateway/health", r.status_code == 200 and r.json()["status"] == "healthy", f"Model: {r.json()['model_info']['model']}")
@@ -175,12 +186,27 @@ def run_qa_suite():
     data = r.json()
     assert_test("POST /chat Injection Blocked safely", r.status_code == 200 and data["policy_action"] == "Block" and data["llm_response"] == "")
 
-    # 4.7 POST /chat with Clean Prompt (Live Groq LLM Inference!)
-    print("  Testing live Groq API inference call...")
-    start_time = time.time()
-    r = client.post("/api/v1/gateway/chat", json={"prompt": "What is 7 plus 5? Answer with just the number."})
-    duration = time.time() - start_time
-    assert_test("POST /chat Live Groq Inference", r.status_code == 200 and "12" in r.json()["llm_response"], f"Response: {r.json()['llm_response'].strip()}, Latency: {duration:.2f}s")
+    # 4.7 POST /chat with Clean Prompt (deterministic by default)
+    import main as main_module
+    original_generate = main_module.groq_connector.generate
+    try:
+        main_module.groq_connector.generate = lambda prompt: "12"
+        r = client.post("/api/v1/gateway/chat", json={"prompt": "What is 7 plus 5? Answer with just the number."})
+    finally:
+        main_module.groq_connector.generate = original_generate
+    assert_test(
+        "POST /chat Deterministic Groq contract",
+        r.status_code == 200 and r.json()["policy_action"] == "Allow" and r.json()["llm_response"] == "12",
+        f"Response: {r.json().get('llm_response', '').strip()}",
+    )
+
+    # Live inference is opt-in to avoid flaky, costly default QA.
+    if os.environ.get("RUN_LIVE_GROQ") == "1":
+        print("  RUN_LIVE_GROQ=1: testing live Groq API inference call...")
+        start_time = time.time()
+        r = client.post("/api/v1/gateway/chat", json={"prompt": "What is 7 plus 5? Answer with just the number."})
+        duration = time.time() - start_time
+        assert_test("POST /chat Live Groq Inference", r.status_code == 200 and "12" in r.json()["llm_response"], f"Response: {r.json()['llm_response'].strip()}, Latency: {duration:.2f}s")
 
     print()
 
